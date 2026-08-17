@@ -5,7 +5,7 @@ Github: github.com/zhxhzy/SCRWKV
 
 import torch
 from torch import nn
-from mmcls.SFE_dev.models.SFE.SFE import SFE
+from models.SFE import SFE
 from models.CSHF import CSHF
 
 class Decoder(nn.Module):
@@ -15,10 +15,13 @@ class Decoder(nn.Module):
         self.backbone = backbone
         self.CSHF = CSHF(8)
 
-    def forward(self, samples):
+    def forward(self, samples, return_features=False):
         outs_SFE = self.backbone(samples)
-        out = self.CSHF(outs_SFE)
-
+        out = self.CSHF(outs_SFE, return_features=return_features)
+        if not return_features:
+            return out
+        out["pyramid_features"] = tuple(outs_SFE)
+        out["input_size"] = tuple(samples.shape[-2:])
         return out
 
 class DiceLoss(nn.Module):
@@ -53,7 +56,7 @@ def build(args):
     args.device = torch.device(args.device)
 
     backbone = SFE(arch='Crack',
-                     out_indices=(0, 1, 2, 3,4),
+                     out_indices=(0, 1, 2, 3),
                      drop_path_rate=0.2,
                      final_norm=True,
                      convert_syncbn=True)

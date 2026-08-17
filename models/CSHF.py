@@ -6,8 +6,24 @@ Github: github.com/zhxhzy/SCRWKV
 import torch.nn as nn
 import torch
 from torch.nn import functional as F
-from mmcls.SFE_dev.models.SFE.SFE import  BottConv
 from models.DySample import DySample
+
+
+class BottConv(nn.Module):
+    """Pointwise-depthwise-pointwise bottleneck used by the original CSHF."""
+
+    def __init__(self, in_channels, out_channels, mid_channels, kernel_size,
+                 stride=1, padding=0, bias=True):
+        super().__init__()
+        self.pointwise_1 = nn.Conv2d(in_channels, mid_channels, 1, bias=bias)
+        self.depthwise = nn.Conv2d(
+            mid_channels, mid_channels, kernel_size, stride, padding,
+            groups=mid_channels, bias=False,
+        )
+        self.pointwise_2 = nn.Conv2d(mid_channels, out_channels, 1, bias=False)
+
+    def forward(self, x):
+        return self.pointwise_2(self.depthwise(self.pointwise_1(x)))
 
 
 class LayerNorm(nn.Module):
@@ -41,7 +57,7 @@ class ScaleAwareAttentionFusion(nn.Module):
         # shape: (4, dim)
         self.scale_embed = nn.Parameter(torch.randn(4, dim))
 
-    def forward(self, c4, c3, c2, c1):
+    def forward(self, c4, c3, c2, c1, return_attention=False):
         B, C, H, W = c4.size()
 
         # --- 加入 scale embedding ---
@@ -62,6 +78,8 @@ class ScaleAwareAttentionFusion(nn.Module):
         )
         fused_expanded = self.expand(out)
 
+        if return_attention:
+            return fused_expanded, attn
         return fused_expanded
 class CSHF(nn.Module):
     def __init__(self, embedding_dim):
@@ -93,7 +111,7 @@ class CSHF(nn.Module):
         self.fusion = ScaleAwareAttentionFusion(embedding_dim)
 
 
-    def forward(self, inputs):
+    def forward(self, inputs, return_features=False):
         c4, c3, c2, c1 = inputs
 
 
@@ -112,21 +130,43 @@ class CSHF(nn.Module):
         b, c, h, w = c1.shape
         out_c1 = self.linear_c1(c1).reshape(b, self.embedding_dim, h, w)
 
+        # DySample preserves the paper's learned upsampling.  Explicit final
+        # alignment also supports non-square inputs and dimensions that are
+        # not exact powers-of-two multiples.
+        target_size = out_c1.shape[-2:]
+        aligned = []
+        for feature in (out_c4, out_c3, out_c2):
+            if feature.shape[-2:] != target_size:
+                feature = F.interpolate(
+                    feature, size=target_size, mode="bilinear",
+                    align_corners=False,
+                )
+            aligned.append(feature)
+        out_c4, out_c3, out_c2 = aligned
+
         # ============================================================
         # ScaleAwareAttentionFusion
         # ============================================================
-        scale_fused = self.fusion(out_c4, out_c3, out_c2, out_c1)
+        scale_fused, scale_attention = self.fusion(
+            out_c4, out_c3, out_c2, out_c1, return_attention=True
+        )
 
         # ============================================================
 
 
         out_c = torch.cat([out_c4, out_c3, out_c2, out_c1], dim=1)  # 4c
 
-        out_c = scale_fused * out_c
-        out_c=self.norm(out_c)
+        harmonic_features = self.norm(scale_fused * out_c)
 
-        out_c = self.linear_fuse1(out_c)
-        out_c = self.dropout(out_c)
+        decoder_features = self.dropout(self.linear_fuse1(harmonic_features))
 
-        x = self.linear_pred_1(self.linear_pred(out_c))
-        return x
+        logits = self.linear_pred_1(self.linear_pred(decoder_features))
+        if not return_features:
+            return logits
+        return {
+            "logits": logits,
+            "decoder_features": decoder_features,
+            "harmonic_features": harmonic_features,
+            "aligned_features": (out_c4, out_c3, out_c2, out_c1),
+            "scale_attention": scale_attention,
+        }

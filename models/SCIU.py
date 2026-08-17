@@ -15,7 +15,7 @@ from torch.nn import functional as F
 import torch.utils.checkpoint as cp
 import collections.abc
 from itertools import repeat
-from timm.models.layers import DropPath
+from timm.layers import DropPath
 from torch.utils.cpp_extension import load
 
 import os
@@ -30,7 +30,7 @@ wkv_cuda = load(name="bi_wkv", sources=[
 ],
                 verbose=True,
                 extra_cuda_cflags=['-res-usage', '--maxrregcount 60', '--use_fast_math', '-O3', '-Xptxas -O3',
-                                   '-gencode arch=compute_86,code=sm_86'])
+                                   ])
 
 
 def resize_pos_embed(pos_embed,
@@ -171,7 +171,12 @@ class WKV(torch.autograd.Function):
 
 
 def RUN_CUDA(w, u, k, v):
-    return WKV.apply(w.cuda(), u.cuda(), k.cuda(), v.cuda())
+    if not all(t.is_cuda for t in (w, u, k, v)):
+        raise RuntimeError("SCRWKV Dy-WKV requires CUDA tensors")
+    devices = {t.device for t in (w, u, k, v)}
+    if len(devices) != 1:
+        raise RuntimeError("SCRWKV Dy-WKV inputs must be on the same CUDA device")
+    return WKV.apply(w, u, k, v)
 
 
 def GBST(input, shift_pixel=1, gamma=1 / 4, patch_resolution=None):
@@ -575,8 +580,12 @@ class Block(nn.Module):
                                                          1)  #  [B,L,C]
 
                     b, l, c = mixed_x.shape
-                    h = w = int(math.sqrt(l))
-                    mixed_x = mixed_x.permute(0, 2, 1).reshape(b, c, h, w)
+                    if l != H * W:
+                        raise RuntimeError(
+                            "Token count does not match the supplied patch resolution: "
+                            f"{l} != {H}x{W}"
+                        )
+                    mixed_x = mixed_x.permute(0, 2, 1).reshape(b, c, H, W)
                     x = x.permute(0, 2, 1).reshape(B, C, H, W)
                     x = self.conlast256(x) + mixed_x
 
