@@ -1,0 +1,10 @@
+snapshots/
+checkpoints/
+viz_*/
+p1_output/
+__pycache__/
+*.pth
+*.pyc
+*.pptx
+*.log
+.claude/

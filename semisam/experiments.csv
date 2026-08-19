@@ -1,0 +1,13 @@
+experiment,pct,labeled,unlabeled,backbone,iterations,best_val_dice,test_dice,notes
+E1 (SemiSAM+ baseline),—,10,100,ResNet34-UNet,30000,0.630,0.588,First-ever baseline; Mean-Teacher + SAM box prompts; SGD lr0.01; custom dataset (viz dice)
+T1 (TUT 5% baseline),5%,49,938,ResNet34-UNet,10000,0.747,—,SemiSAM+ baseline on TUT 5% (AdamW lr0.001); reference number for P11–P14
+FS-UNet (fully-supervised),100%,987,0,ResNet34-UNet,10000,0.785,0.818,Fully-supervised upper bound — BCE+Dice+clDice, no SAM/SSL; the ceiling (P13 reaches 92.5% of this at 5% labels)
+FS-SegFormer (fully-supervised),100%,987,0,SegFormer-B1,10000,0.786,0.826,Fully-supervised SegFormer-B1 ceiling (AdamW); P14 reaches 94.8% of this at 5% labels
+P11 (consult 10%),10%,99,888,ResNet34-UNet,2000,0.723,0.758,Learned consultation gate alpha=sigmoid(2*MLP(8 feats)); fixes the 10% degradation; beats T1
+P12 (consult 5% proxy),5%,49,938,ResNet34-UNet,2000,0.678,0.723,Learned gate with topo/morph proxy target — loses to T1; proxy target too noisy at 5% labels
+P13 (consult 5% measured),5%,49,938,ResNet34-UNet,2000,0.715,0.757,Learned gate with measured dice_sam-dice_ema target on labeled components (supervised every 4th iter); fixes P12; beats T1
+P14 (SegFormer-B1),5%,49,938,SegFormer-B1,2000,0.742,0.783,Architecture-agnostic run — transformer backbone (13.9M); same method; best test dice
+Baseline@2k (SegFormer-B1),5%,49,938,SegFormer-B1,2000,0.739,0.781,Matched-budget baseline: MT+SAM; no gate/selector — reference for gate ablations; clDice 0.143; frags 5.4
+P15 (gate XAttn 8-scalar),5%,49,938,SegFormer-B1,2000,0.729,0.775,Cross-attention consultation on 4+4 scalar features — input too impoverished; fails
+P16 (gate XAttn pooled),5%,49,938,SegFormer-B1,2000,0.738,0.776,Cross-attention on pooled decoder features (topo 512d + morph 768d); richer input still below baseline
+P17 (learned quality w),5%,49,938,SegFormer-B1,2000,0.736,0.774,Per-pixel learned pseudo-label quality (dense BCE on labeled pixels); replaces 1-U gate; still below baseline — 4th null selector result

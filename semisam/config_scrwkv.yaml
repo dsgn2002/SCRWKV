@@ -1,0 +1,77 @@
+data:
+  img_size: [640, 640]
+  labeled_image_dir: data/tut_5pct/train_labeled/images/
+  labeled_mask_dir: data/tut_5pct/train_labeled/masks/
+  labeled_num: 49
+  num_classes: 2
+  unlabeled_dir: data/tut_5pct/train_unlabeled/images/
+  val_image_dir: data/tut_5pct/val/images/
+  val_mask_dir: data/tut_5pct/val/masks/
+model:
+  generalist_checkpoint: /home/guest/dinu/Harness_agent/model/checkpoint_best.pth
+  generalist_type: vit_b
+  scrwkv_root: /home/guest/dinu/SCRWKV/SCRWKV
+  scrwkv_risk_scale: 0.25
+  specialist_decoder_channels: [256, 128, 64, 32]
+  specialist_encoder: scrwkv
+prompting:
+  box_jitter_scale: 0.1
+  box_jitter_translate: 15
+  box_margin_px: 10
+  box_merge_dist_px: 30
+  cc_conf_threshold: 0.3
+  cc_min_area: 50
+  neg_offset_px: 20
+  neg_subsample: 3
+  num_clicks: 10
+  num_prompt_perturbations: 2
+  point_subset_frac: 0.7
+  pos_spacing_px: 15
+  prompt_type: box
+  prune_spur_px: 20
+  skeleton_enabled: false
+topology:
+  acceptance_u_geo: 0.3
+  bce_weight: 1.0
+  cl_dice_interval: 1
+  cl_dice_warmup: 200
+  cl_dice_weight: 0.1
+  consultation_threshold: 0.0
+  dice_weight: 1.0
+  enabled: true
+  max_sam_queries: 5
+  morph_a: 1.0
+  morph_b: 0.5
+  feature_consistency: 0.1
+  topo_alpha: 1.0
+  topo_beta: 0.5
+training:
+  base_lr: 0.01
+  batch_size: 4
+  bcp_enabled: false
+  bcp_mask_ratio: 0.66
+  bcp_u_weight: 0.5
+  beta_sam: 0.1
+  consistency: 0.1
+  consistency_rampup: 40.0
+  dual_teacher_enabled: false
+  ema_decay: 0.99
+  fusion_uncertainty_threshold: 0.75
+  labeled_bs: 2
+  max_iterations: 2000
+  pretrain_checkpoint: ''
+  seed: 1337
+  ssl_lr: 0.001
+  stage1_iterations: 6000
+uncertainty:
+  boundary_band_width_px: 5
+  scale_alpha: 0.5
+  scale_enabled: false
+  scale_list: [0.5, 1.0, 2.0]
+  upfm_enabled: false
+  use_detach: true
+  use_inverted_gating: true
+  use_learnable_fusion: true
+  w_boundary: 2.0
+  w_interior: 1.0
+

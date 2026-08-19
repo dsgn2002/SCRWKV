@@ -173,3 +173,10 @@ the gradient while the EMA teacher still lags the student.
 
 Reference run: `snapshots/tut_5pct_scrwkv_featcons` (2,000 steps, same seed
 and budget as the SCRWKV baseline, val 0.7155 / test 0.7544).
+
+## Full workspace (2026-08-19)
+
+The complete SemiSAM method code — including `train.py` with the
+feature-consistency term — is vendored at [`semisam/`](../../semisam) at the
+repository root. It supersedes the mirrored single files above, which are
+kept for history.

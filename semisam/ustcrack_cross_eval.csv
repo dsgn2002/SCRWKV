@@ -1,0 +1,5 @@
+Experiment,Mean Dice,Std Dice,Best Dice,Worst Dice
+T1_baseline,0.2571,0.2039,0.8407,0.0000
+T2_upfm,0.2452,0.2001,0.8222,0.0000
+T3_scale_upfm,0.2502,0.2037,0.7884,0.0000
+E5TUT_full,0.2539,0.2035,0.7827,0.0000

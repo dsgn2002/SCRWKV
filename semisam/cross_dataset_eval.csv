@@ -1,0 +1,2 @@
+Dataset,Experiment,Mean Dice,Std Dice,Best Dice,Worst Dice,Zero-Dice Images
+omnicrack30k,P5_toposam_2k,0.2557,0.3226,1.0000,0.0000,1593
