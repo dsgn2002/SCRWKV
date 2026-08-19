@@ -153,3 +153,23 @@ The evaluator follows the existing TUT-test protocol: 640x640 inputs, a 0.5
 probability threshold, non-empty ground-truth cases, and the project's Dice,
 IoU, clDice, skeleton precision/recall, and fragmentation implementations. It
 writes `test_eval.log` and `test_per_image_metrics.csv` into the output folder.
+
+
+## Feature-level consistency (2026-08-19)
+
+`topology.feature_consistency` (default 0 = off) adds a consistency term on
+unlabeled data between the student and the EMA teacher, riding the same
+sigmoid ramp as mask consistency (`consistency_rampup` epochs):
+
+- MSE on `harmonic_features` (representation stability).
+- KL divergence on `scale_attention` routing distributions
+  (KL(teacher || student), both post-softmax).
+
+Implemented in SemiSAM's `train.py` (`ssl_train`, guarded on
+`"scale_attention" in student_out`), so the term is a no-op on ResNet-UNet
+and SegFormer specialists. Early KL is near zero (untrained attention is
+~uniform) and peaks mid-training once routing sharpens; the ramp withholds
+the gradient while the EMA teacher still lags the student.
+
+Reference run: `snapshots/tut_5pct_scrwkv_featcons` (2,000 steps, same seed
+and budget as the SCRWKV baseline, val 0.7155 / test 0.7544).

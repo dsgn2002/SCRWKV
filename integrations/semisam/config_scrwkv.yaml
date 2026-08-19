@@ -42,6 +42,7 @@ topology:
   max_sam_queries: 5
   morph_a: 1.0
   morph_b: 0.5
+  feature_consistency: 0.1
   topo_alpha: 1.0
   topo_beta: 0.5
 training:
