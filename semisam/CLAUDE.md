@@ -71,6 +71,30 @@ branch of `dsgn2002/SCRWKV` at `/home/guest/dinu/SCRWKV/SCRWKV`.
 This integration changes only the specialist representation. It does not yet
 change SAM pseudo-label generation, uncertainty calibration or the SSL loss.
 
+### SCRWKV feature-level consistency — FALSIFIED (19–20 August 2026)
+
+Hypothesis: SCRWKV's topological machinery (`harmonic_features`,
+`scale_attention`) could serve as an extra SSL learning signal —
+consistency between student and EMA teacher on unlabeled data (MSE on
+harmonic features + KL on scale-attention routing), riding the existing
+consistency ramp. Implemented in `train.py` behind
+`topology.feature_consistency` (no-op on non-SCRWKV backbones).
+
+| Run | val | test |
+|---|---|---|
+| SCRWKV baseline | **0.7155** | **0.7544** |
+| featcons @0.1 (from iter 0) | 0.6896 | 0.7301 |
+| featcons @0.1 (delayed to epoch 10) | 0.6814 | 0.7236 |
+
+Verdict: falsified both ways. From iter 0 the term collapses training
+(iter-200 val 0.0008; recovered but finished −0.026). The delayed retry
+eliminated the collapse (iter-200 matches baseline) yet still finished
+−0.034/−0.031 with a stable ~−0.03 drag from activation onward — so the
+constraint itself, not the timing, costs performance: pinning harmonic
+features and scale-attention to the lagging EMA teacher taxes exactly the
+representation plasticity that drives mid-training gains. Sixth falsified
+learned addition at 5% labels (after P15/P16/P17 + quality selector).
+
 ### Component-Level Selective SAM Query
 ```
 EMA prediction
@@ -140,6 +164,7 @@ selectors land 0.774–0.783 vs baseline 0.781. Structural conclusions:
 | P12 | tut_5pct_consult | 0.678 | 0.723 | 5% + MLP gate (topo/morph proxy target) — loses to P9 |
 | **P13** | **tut_5pct_consult_gt** | **0.715** | **0.757** | **5% + MLP gate w/ measured dice_sam−dice_ema target on labeled comps — fixes P12 regression, beats P9** |
 | **P14** | **tut_5pct_segformer_b1** | **0.742** | **0.783** | **SegFormer-B1 (13.9M) + full method — architecture-agnostic, beats UNet P13 by +0.026 test** |
+| SCRWKV | tut_5pct_scrwkv | 0.716 | 0.754 | SCRWKV specialist (1.22M, from scratch — no pretraining) + full method; ties UNet with 1/33 the params |
 | FS-UNet | tut_fullysup_unet | 0.785 | **0.818** | Fully-supervised upper bound (987 labels, no SAM/SSL) — the ceiling; P13 reaches 92.5% of it at 5% labels |
 | FS-SegFormer | tut_fullysup_segformer | 0.786 | **0.826** | Fully-supervised SegFormer-B1 ceiling (AdamW); P14 reaches 94.8% of it at 5% labels |
 

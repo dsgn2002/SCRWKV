@@ -871,6 +871,7 @@ def ssl_train(cfg: Config, snapshot_path: str):
                 if (
                     cfg.topology.feature_consistency > 0
                     and "scale_attention" in student_out
+                    and iter_num // len(trainloader) >= 10  # delay: EMA lags the student before ep10
                 ):
                     ramp = consistency_weight / max(cfg.training.consistency, 1e-8)
                     mse_f = F.mse_loss(
